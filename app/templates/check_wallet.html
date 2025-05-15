@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Kiểm tra ví</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="dark">
+<div class="container">
+    <h2>Kiểm tra nguồn ví</h2>
+    <form method="post" action="/check-wallet">
+        <label>Chọn blockchain:</label>
+        <select name="chain" required>
+            <option value="ETH">Ethereum</option>
+            <option value="TRON">Tron</option>
+        </select>
+        <label>Nhập địa chỉ ví:</label>
+        <input type="text" name="address" required>
+        <button type="submit">Kiểm tra</button>
+    </form>
+    {% if result %}
+        <h3>Kết quả:</h3>
+        <ul>
+            <li><strong>Blockchain:</strong> {{ result.chain }}</li>
+            <li><strong>Địa chỉ ví:</strong> {{ result.address }}</li>
+            <li><strong>Số dư:</strong> {{ result.balance }}</li>
+            {% if result.chain == "Ethereum" %}
+                <li><strong>Dính Tornado Cash:</strong> {{ "Có" if result.tornado else "Không" }}</li>
+            {% endif %}
+            <li><strong>Lịch sử giao dịch gần nhất:</strong>
+                <ul>
+                {% for tx in result.txs %}
+                    <li>
+                        {% if result.chain == "Ethereum" %}
+                        Hash: {{ tx.hash }}, From: {{ tx.from }}, To: {{ tx.to }}, Value: {{ tx.value }}
+                        {% else %}
+                        Hash: {{ tx.hash }}, Type: {{ tx.contractType }}, Value: {{ tx.amount_str if tx.amount_str else tx.amount }}
+                        {% endif %}
+                    </li>
+                {% endfor %}
+                </ul>
+            </li>
+        </ul>
+    {% endif %}
+</div>
+</body>
+</html>

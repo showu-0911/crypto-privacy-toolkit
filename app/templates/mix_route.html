@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Mix Route</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="dark">
+<div class="container">
+    <h2>Mix & Hướng dẫn Route ẩn danh</h2>
+    <form method="post" action="/mix-route">
+        <label>Chọn blockchain:</label>
+        <select name="chain" required>
+            <option value="ETH">Ethereum</option>
+            <option value="TRON">Tron</option>
+        </select>
+        <label>Số lượng (USDT):</label>
+        <input type="text" name="amount" required>
+        <button type="submit">Gợi ý Mix</button>
+    </form>
+    {% if route %}
+        <h3>Hướng dẫn mix & chia nhỏ:</h3>
+        <ul>
+        {% for step in route %}
+            <li>{{ step }}</li>
+        {% endfor %}
+        </ul>
+    {% endif %}
+</div>
+</body>
+</html>

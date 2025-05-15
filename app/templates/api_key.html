@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Thiết lập API Key</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="dark">
+<div class="container">
+    <h2>Thiết lập API Key</h2>
+    <form method="post" action="/api-key">
+        <label>API key Etherscan (Ethereum):</label>
+        <input type="text" name="eth_key" value="{{ eth_key or '' }}">
+        <label>API key Tronscan (Tron):</label>
+        <input type="text" name="tron_key" value="{{ tron_key or '' }}">
+        <button type="submit">Lưu lại</button>
+    </form>
+    <p style="margin-top:16px;"><a href="/dashboard">← Quay lại Dashboard</a></p>
+</div>
+</body>
+</html>

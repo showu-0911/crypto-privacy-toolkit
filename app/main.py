@@ -86,7 +86,7 @@ async def check_wallet(request: Request, chain: str = Form(...), address: str = 
             "action": "balance",
             "address": address,
             "tag": "latest",
-            "apikey": "CXTB4IUT31N836G93ZI3YQBEWBQEGGH5QS"
+            "apikey": "RAM93SQ2635QZAC55KGR13DJCDNZ2BDN2F"
         }
         r = requests.get(api, params=params)
         try:

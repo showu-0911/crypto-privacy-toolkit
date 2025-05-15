@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Theo dõi Cash-out</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="dark">
+<div class="container">
+    <h2>Theo dõi quá trình Cash-out</h2>
+    <form method="post" action="/cashout-tracker">
+        <label>Số lượng (USDT):</label>
+        <input type="text" name="amount" required>
+        <label>Kênh cash-out:</label>
+        <select name="channel" required>
+            <option value="P2P Telegram">P2P Telegram</option>
+            <option value="Gift card">Gift card</option>
+            <option value="OTC Shop">OTC Shop</option>
+        </select>
+        <label>Ghi chú:</label>
+        <input type="text" name="note">
+        <button type="submit">Thêm giao dịch</button>
+    </form>
+    <h3>Lịch sử các lần cash-out:</h3>
+    <ul>
+    {% for rec in history %}
+        <li>
+            Số lượng: {{ rec.amount }} USDT,
+            Kênh: {{ rec.channel }},
+            Ghi chú: {{ rec.note }}
+        </li>
+    {% endfor %}
+    </ul>
+</div>
+</body>
+</html>

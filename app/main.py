@@ -220,3 +220,20 @@ async def cashout_tracker(request: Request,
 def logout(request: Request):
     request.session.clear()
     return RedirectResponse(url="/login")
+@app.get("/api-key", response_class=HTMLResponse)
+async def api_key_page(request: Request):
+    if not check_auth(request):
+        return RedirectResponse(url="/login")
+    tpl = templates.get_template("api_key.html")
+    eth_key = request.session.get("eth_key")
+    tron_key = request.session.get("tron_key")
+    return HTMLResponse(tpl.render(eth_key=eth_key, tron_key=tron_key))
+
+@app.post("/api-key", response_class=HTMLResponse)
+async def api_key_save(request: Request, eth_key: str = Form(""), tron_key: str = Form("")):
+    if not check_auth(request):
+        return RedirectResponse(url="/login")
+    request.session["eth_key"] = eth_key
+    request.session["tron_key"] = tron_key
+    tpl = templates.get_template("api_key.html")
+    return HTMLResponse(tpl.render(eth_key=eth_key, tron_key=tron_key))

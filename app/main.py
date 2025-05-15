@@ -29,6 +29,14 @@ def save_history(filename, data):
     except Exception:
         pass
 
+def get_eth_usdt_price():
+    try:
+        price_api = "https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDT"
+        r = requests.get(price_api)
+        return float(r.json()["price"])
+    except Exception:
+        return None
+
 # ---------------- ROUTES ----------------
 
 @app.get("/", response_class=HTMLResponse)
@@ -78,50 +86,74 @@ async def check_wallet(request: Request, chain: str = Form(...), address: str = 
         return RedirectResponse(url="/login")
     error = None
     result = None
+
+    # --- Lấy API key từ session hoặc dùng mặc định của bạn ---
+    eth_api_key = request.session.get("eth_key") or "RAM93SQ2635QZAC55KGR13DJCDNZ2BDN2F"
+    tron_api_key = request.session.get("tron_key") or ""
+
     if chain == "ETH":
-        # Dùng API Etherscan
-        api = f"https://api.etherscan.io/api"
+        api = "https://api.etherscan.io/api"
+        # Lấy số dư
         params = {
             "module": "account",
             "action": "balance",
             "address": address,
             "tag": "latest",
-            "apikey": "RAM93SQ2635QZAC55KGR13DJCDNZ2BDN2F"
+            "apikey": eth_api_key
         }
         r = requests.get(api, params=params)
         try:
-            bal = int(r.json()["result"]) / 1e18
+            bal_eth = int(r.json()["result"]) / 1e18
         except Exception:
-            bal = "Không truy xuất được"
-        # Kiểm tra Tornado Cash
-        tornado_list = [
-            "0xD90e2f925DA726b50C4Ed8D0Fb90Ad053324F31b", # Tornado 10 ETH
-            "0x910cBD523D972eb0a6f4cae4618ad62622b39DbF", # Tornado 100 ETH
-            "0x47CE0B9bC10D3cFfE9f2aBe8F2093C23A1c42A2e", # Tornado 1k ETH
-        ]
+            bal_eth = 0
+        eth_usdt = get_eth_usdt_price()
+        if eth_usdt:
+            bal_usdt = bal_eth * eth_usdt
+            bal_str = f"{bal_eth:.6f} ETH ≈ {bal_usdt:,.2f} USDT"
+        else:
+            bal_str = f"{bal_eth:.6f} ETH"
+
+        # Lấy lịch sử giao dịch
         tx_api = "https://api.etherscan.io/api"
         tx_params = {
             "module": "account",
             "action": "txlist",
             "address": address,
             "sort": "desc",
-            "apikey": "CXTB4IUT31N836G93ZI3YQBEWBQEGGH5QS"
+            "apikey": eth_api_key
         }
         txres = requests.get(tx_api, params=tx_params)
         try:
             txs = txres.json()["result"]
-            tx_tornado = any([tx["to"] in tornado_list or tx["from"] in tornado_list for tx in txs])
         except Exception:
-            tx_tornado = False
+            txs = []
+
+        # Kiểm tra Tornado Cash
+        tornado_list = [
+            "0xD90e2f925DA726b50C4Ed8D0Fb90Ad053324F31b", # Tornado 10 ETH
+            "0x910cBD523D972eb0a6f4cae4618ad62622b39DbF", # Tornado 100 ETH
+            "0x47CE0B9bC10D3cFfE9f2aBe8F2093C23A1c42A2e", # Tornado 1k ETH
+        ]
+        tx_tornado = any([tx.get("to") in tornado_list or tx.get("from") in tornado_list for tx in txs])
+
+        # Trả về 10 giao dịch gần nhất với các trường cần thiết
+        tx_list = []
+        for tx in txs[:10]:
+            tx_list.append({
+                "hash": tx.get("hash", ""),
+                "from": tx.get("from", ""),
+                "to": tx.get("to", ""),
+                "value": str(int(tx.get("value", "0")) / 1e18) + " ETH"
+            })
+
         result = {
             "chain": "Ethereum",
             "address": address,
-            "balance": bal,
+            "balance": bal_str,
             "tornado": tx_tornado,
-            "txs": txs[:10] if 'txs' in locals() else [],
+            "txs": tx_list,
         }
     elif chain == "TRON":
-        # Dùng API Tronscan
         api = f"https://apilist.tronscanapi.com/api/account"
         params = {
             "address": address,
@@ -131,7 +163,6 @@ async def check_wallet(request: Request, chain: str = Form(...), address: str = 
             bal = float(r.json().get("balance", 0)) / 1e6
         except Exception:
             bal = "Không truy xuất được"
-        # Lịch sử giao dịch
         txs = []
         tx_api = f"https://apilist.tronscanapi.com/api/transaction"
         tx_params = {
@@ -145,11 +176,19 @@ async def check_wallet(request: Request, chain: str = Form(...), address: str = 
             txs = txres.json().get("data", [])
         except Exception:
             txs = []
+        tx_list = []
+        for tx in txs:
+            tx_list.append({
+                "hash": tx.get("hash", ""),
+                "contractType": tx.get("contractType", ""),
+                "amount": tx.get("amount", ""),
+                "amount_str": str(float(tx.get("amount", 0)) / 1e6) + " TRX" if tx.get("amount") else "",
+            })
         result = {
             "chain": "Tron",
             "address": address,
-            "balance": bal,
-            "txs": txs
+            "balance": str(bal) + " TRX",
+            "txs": tx_list
         }
     save_history("wallet_history.json", {"chain": chain, "address": address, "result": result})
     tpl = templates.get_template("check_wallet.html")
@@ -166,7 +205,6 @@ async def mix_route_page(request: Request):
 async def mix_route(request: Request, chain: str = Form(...), amount: str = Form(...)):
     if not check_auth(request):
         return RedirectResponse(url="/login")
-    # Gợi ý mix cơ bản
     if chain == "ETH":
         route = [
             "Chuyển token sang ví trung gian chưa từng KYC.",
@@ -208,7 +246,6 @@ async def cashout_tracker(request: Request,
         "note": note
     }
     save_history("cashout_history.json", record)
-    # Reload
     history = []
     if os.path.exists("cashout_history.json"):
         with open("cashout_history.json", "r", encoding="utf-8") as f:
@@ -216,10 +253,7 @@ async def cashout_tracker(request: Request,
     tpl = templates.get_template("cashout_tracker.html")
     return HTMLResponse(tpl.render(history=history))
 
-@app.get("/logout")
-def logout(request: Request):
-    request.session.clear()
-    return RedirectResponse(url="/login")
+# ----------- THÊM 2 ROUTE NHẬP API KEY TRỰC TIẾP -----------
 @app.get("/api-key", response_class=HTMLResponse)
 async def api_key_page(request: Request):
     if not check_auth(request):
@@ -237,3 +271,8 @@ async def api_key_save(request: Request, eth_key: str = Form(""), tron_key: str 
     request.session["tron_key"] = tron_key
     tpl = templates.get_template("api_key.html")
     return HTMLResponse(tpl.render(eth_key=eth_key, tron_key=tron_key))
+
+@app.get("/logout")
+def logout(request: Request):
+    request.session.clear()
+    return RedirectResponse(url="/login")
